@@ -6,8 +6,9 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Looply - Keep Your Team in the Loop with Daily Reporting",
-  description: "Beautiful, simple end-of-day reporting that keeps employers and teams connected and informed",
+  title: "Loopy - Stay in the Loop with Smart Employee Monitoring",
+  description:
+    "Level up your workflow with Loopy. Automated End-of-Day reports, real-time performance monitoring, and intelligent insights for modern teams.",
 }
 
 export default function RootLayout({
@@ -17,7 +18,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className} suppressHydrationWarning={true}>
+        {children}
+      </body>
     </html>
   )
 }

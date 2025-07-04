@@ -92,7 +92,10 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
       {shifts.length > 0 && (
         <div className="space-y-3">
           {shifts.map((shift, index) => (
-            <Card key={shift.id} className="bg-gray-50">
+            <Card 
+              key={`shift-${index}-${shift.startTime}-${shift.endTime}`} 
+              className="bg-gray-50"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">

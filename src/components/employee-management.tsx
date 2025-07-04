@@ -148,7 +148,7 @@ export function EmployeeManagement({ employees, onAddEmployee, onRemoveEmployee 
                     <div className="flex items-center space-x-2">
                       <code className="px-2 py-1 bg-white border rounded text-sm font-mono">{employee.accessCode}</code>
                       <button
-                        onClick={() => copyAccessCode(employee.accessCode ?? "")}
+                        onClick={() => copyAccessCode(employee.accessCode)}
                         className="p-1 hover:bg-gray-200 rounded transition-colors"
                         title="Copy access code"
                       >
@@ -183,7 +183,7 @@ export function EmployeeManagement({ employees, onAddEmployee, onRemoveEmployee 
             <h4 className="font-medium text-blue-900 mb-2">📋 How employees access their accounts:</h4>
             <ol className="text-sm text-blue-800 space-y-1">
               <li>1. Share the access code with your employee</li>
-              <li>2. They visit the login page and click &quot;Employee? Use access code&quot;</li>
+              <li>2. They visit the login page and click &qout;Employee? Use access code&qout;</li>
               <li>3. They enter their unique access code to access their EOD reporting</li>
             </ol>
           </div>

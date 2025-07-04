@@ -11,8 +11,8 @@ export class EODService {
     return EODService.instance
   }
 
-  // Change from private to public
-  calculateTotalHours(shifts: WorkShift[]): number {
+  private calculateTotalHours(shifts: WorkShift[]): number {
+    if (!shifts || shifts.length === 0) return 0
     return shifts.reduce((total, shift) => {
       const [startHour, startMin] = shift.startTime.split(":").map(Number)
       const [endHour, endMin] = shift.endTime.split(":").map(Number)
@@ -39,19 +39,14 @@ export class EODService {
   ): Promise<EODReport> {
     const reportId = `${employeeId}-${date}`
     let report = await storage.get<EODReport>(`eod:${reportId}`)
-    
-    // Calculate hours from shifts
-    const hoursWorked = this.calculateTotalHours(shifts)
+
+    const totalHours = this.calculateTotalHours(shifts)
 
     if (report) {
-      report = {
-        ...report,
-        summary,
-        shifts,
-        hoursWorked,
-        totalHours: hoursWorked, // Add totalHours property with same value
-        updatedAt: new Date().toISOString(),
-      }
+      report.summary = summary
+      report.shifts = shifts
+      report.totalHours = totalHours
+      report.updatedAt = new Date().toISOString()
     } else {
       report = {
         id: reportId,
@@ -60,8 +55,7 @@ export class EODService {
         date,
         summary,
         shifts,
-        hoursWorked,
-        totalHours: hoursWorked, // Add totalHours property with same value
+        totalHours,
         status: "draft",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -72,32 +66,17 @@ export class EODService {
     return report
   }
 
-  async submitReport(
-    employeeId: string,
-    companyId: string,
-    date: string,
-    summary: string,
-    shifts: WorkShift[],
-  ): Promise<EODReport> {
+  async submitReport(employeeId: string, date: string): Promise<EODReport> {
     const reportId = `${employeeId}-${date}`
-    
-    // Calculate hours from shifts
-    const hoursWorked = this.calculateTotalHours(shifts)
-    
-    const report: EODReport = {
-      id: reportId,
-      employeeId,
-      companyId,
-      date,
-      summary,
-      shifts,
-      hoursWorked,
-      totalHours: hoursWorked, // Add totalHours property with same value
-      status: "submitted",
-      submittedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const report = await storage.get<EODReport>(`eod:${reportId}`)
+
+    if (!report) {
+      throw new Error("Report not found")
     }
+
+    report.status = "submitted"
+    report.submittedAt = new Date().toISOString()
+    report.updatedAt = new Date().toISOString()
 
     await storage.set(`eod:${reportId}`, report)
     return report
@@ -128,35 +107,26 @@ export class EODService {
   }
 
   async getDashboardStats(companyId: string): Promise<DashboardStats> {
+    const today = new Date().toISOString().split("T")[0]
     const reports = await this.getReports(companyId)
+    const todayReports = reports.filter((r) => r.date === today && r.status === "submitted")
+
     const employees = await storage.getAll<Employee>("employee:")
-    const companyEmployees = employees.filter((emp) => emp.companyId === companyId)
-    const activeEmployees = companyEmployees.filter((emp) => emp.isActive !== false).length
-    
-    const today = new Date().toISOString().split('T')[0]
-    const todayReports = reports.filter((report) => report.date === today)
-    
-    // Calculate total hours using shifts data when available
-    let totalHours = 0
-    reports.forEach(report => {
-      if (report.shifts && report.shifts.length > 0) {
-        // Use the same calculation method as in the component
-        totalHours += this.calculateTotalHours(report.shifts)
-      } else if (report.totalHours) {
-        totalHours += report.totalHours
-      } else if (report.hoursWorked) {
-        totalHours += report.hoursWorked
-      }
-    })
-    
-    // Calculate average
-    const averageHours = reports.length > 0 ? totalHours / reports.length : 0
-    
+    const companyEmployees = employees.filter((emp) => emp.companyId === companyId && emp.isActive)
+
+    // Calculate total hours properly
+    const totalHours = todayReports.reduce((sum, report) => {
+      const hours = report.totalHours || this.calculateTotalHours(report.shifts || [])
+      return sum + hours
+    }, 0)
+
+    const averageHours = todayReports.length > 0 ? totalHours / todayReports.length : 0
+
     return {
       totalSubmissions: todayReports.length,
-      pendingEODs: Math.max(0, activeEmployees - todayReports.length),
-      activeEmployees,
-      averageHours
+      pendingEODs: Math.max(0, companyEmployees.length - todayReports.length),
+      activeEmployees: companyEmployees.length,
+      averageHours,
     }
   }
 
@@ -168,22 +138,15 @@ export class EODService {
     const rows = reports
       .map((report) => {
         const employee = employees.find((emp) => emp.id === report.employeeId)
-        const shiftsText = report.shifts && report.shifts.length > 0
-          ? report.shifts
-              .map(
-                (shift) =>
-                  `${shift.startTime}-${shift.endTime}${shift.breakMinutes ? ` (${shift.breakMinutes}min break)` : ""}${shift.description ? ` - ${shift.description}` : ""}`,
-              )
-              .join("; ")
-          : "";
+        const totalHours = report.totalHours || this.calculateTotalHours(report.shifts || [])
+        const shiftsText = (report.shifts || [])
+          .map(
+            (shift) =>
+              `${shift.startTime}-${shift.endTime}${shift.breakMinutes ? ` (${shift.breakMinutes}min break)` : ""}${shift.description ? ` - ${shift.description}` : ""}`,
+          )
+          .join("; ")
 
-        // Use totalHours, fallback to hoursWorked
-        const hours = (report.totalHours || report.hoursWorked || 0).toFixed(2);
-        
-        // Escape quotes in summary to prevent CSV issues
-        const escapedSummary = report.summary.replace(/"/g, '""');
-
-        return `${report.date},"${employee?.name || "Unknown"}",${hours},"${shiftsText}","${escapedSummary}",${report.status}`
+        return `${report.date},"${employee?.name || "Unknown"}",${totalHours.toFixed(2)},"${shiftsText}","${report.summary}",${report.status}`
       })
       .join("\n")
 
