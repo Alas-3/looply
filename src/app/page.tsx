@@ -32,7 +32,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-semibold text-xl text-gray-900">Loopy</span>
+              <span className="font-semibold text-xl text-gray-900">Looply</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a
@@ -432,7 +432,7 @@ export default function LandingPage() {
                       <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-sm">L</span>
                       </div>
-                      <span className="font-semibold text-gray-900">Loopy</span>
+                      <span className="font-semibold text-gray-900">Looply</span>
                       <span className="text-gray-500 hidden sm:inline">•</span>
                       <span className="text-sm text-gray-600 hidden sm:inline">
                         Monday, September 30
@@ -940,7 +940,7 @@ export default function LandingPage() {
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Join teams who&apos;ve transformed their employee performance
-            tracking with Loopy
+            tracking with Looply
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth">
@@ -971,14 +971,13 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">L</span>
             </div>
-            <span className="font-semibold text-xl text-gray-900">Loopy</span>
+            <span className="font-semibold text-xl text-gray-900">Looply</span>
           </div>
           <p className="text-gray-600 mb-4">
-            Streamline employee performance monitoring with intelligent
-            automation
+            Streamline employee performance monitoring with Looply
           </p>
           <p className="text-gray-500 text-sm">
-            © 2024 Loopy. Built for modern teams who value efficiency.
+            © 2025 Looply. Built for modern teams who value efficiency.
           </p>
         </div>
       </footer>

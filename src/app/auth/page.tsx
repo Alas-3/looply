@@ -65,13 +65,13 @@ export default function AuthPage() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
               <span className="text-white font-bold">L</span>
             </div>
-            <span className="font-semibold text-2xl">Loopy</span>
+            <span className="font-semibold text-2xl">Looply</span>
           </Link>
         </div>
 
         <Card className="glass-effect">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">{isAccessCode ? "Employee Access" : "Welcome to Loopy"}</CardTitle>
+            <CardTitle className="text-2xl">{isAccessCode ? "Employee Access" : "Welcome to Looply"}</CardTitle>
             <p className="text-gray-600 text-sm mt-2">
               {isAccessCode ? "Enter your access code to continue" : "Sign in to your account"}
             </p>

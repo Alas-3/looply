@@ -140,7 +140,7 @@ export default function DashboardPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `loopy-reports-${new Date().toISOString().split("T")[0]}.csv`
+      a.download = `Looply-reports-${new Date().toISOString().split("T")[0]}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
@@ -205,7 +205,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-semibold text-xl text-gray-900">Loopy</span>
+              <span className="font-semibold text-xl text-gray-900">Looply</span>
               <span className="text-gray-400 hidden sm:inline">•</span>
               <span className="text-sm text-gray-600 hidden sm:inline">{currentDate}</span>
             </div>

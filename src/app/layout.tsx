@@ -6,9 +6,9 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Loopy - Stay in the Loop with Smart Employee Monitoring",
+  title: "Looply - Stay in the Loop with Looply",
   description:
-    "Level up your workflow with Loopy. Automated End-of-Day reports, real-time performance monitoring, and intelligent insights for modern teams.",
+    "Level up your workflow with Looply. Automated End-of-Day reports, real-time performance monitoring, and intelligent insights for modern teams.",
 }
 
 export default function RootLayout({

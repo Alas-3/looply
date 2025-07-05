@@ -180,7 +180,7 @@ export default function EmployeePage() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-semibold text-xl text-gray-900">Loopy</span>
+              <span className="font-semibold text-xl text-gray-900">Looply</span>
               <span className="text-gray-400 hidden sm:inline">•</span>
               <span className="text-sm text-gray-600 hidden sm:inline">{today}</span>
             </div>
