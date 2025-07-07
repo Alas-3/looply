@@ -1,50 +1,57 @@
-"use client"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { WorkShift } from "@/lib/types"
+"use client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { WorkShift } from "@/lib/types";
 
 interface ShiftTrackerProps {
-  shifts: WorkShift[]
-  onShiftsChange: (shifts: WorkShift[]) => void
-  disabled?: boolean
+  shifts: WorkShift[];
+  onShiftsChange: (shifts: WorkShift[]) => void;
+  disabled?: boolean;
 }
 
-export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: ShiftTrackerProps) {
+export function ShiftTracker({
+  shifts,
+  onShiftsChange,
+  disabled = false,
+}: ShiftTrackerProps) {
   const [newShift, setNewShift] = useState({
     startTime: "",
     endTime: "",
     breakMinutes: 0,
     description: "",
-  })
+  });
 
   const generateShiftId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2)
-  }
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
 
   const calculateShiftHours = (shift: WorkShift): number => {
-    const [startHour, startMin] = shift.startTime.split(":").map(Number)
-    const [endHour, endMin] = shift.endTime.split(":").map(Number)
+    const [startHour, startMin] = shift.startTime.split(":").map(Number);
+    const [endHour, endMin] = shift.endTime.split(":").map(Number);
 
-    const startMinutes = startHour * 60 + startMin
-    let endMinutes = endHour * 60 + endMin
+    const startMinutes = startHour * 60 + startMin;
+    let endMinutes = endHour * 60 + endMin;
 
     // Handle overnight shifts
     if (endMinutes < startMinutes) {
-      endMinutes += 24 * 60
+      endMinutes += 24 * 60;
     }
 
-    const totalMinutes = endMinutes - startMinutes - (shift.breakMinutes || 0)
-    return Math.max(0, totalMinutes / 60)
-  }
+    const totalMinutes = endMinutes - startMinutes - (shift.breakMinutes || 0);
+    return Math.max(0, totalMinutes / 60);
+  };
 
   const getTotalHours = (): number => {
-    return shifts.reduce((total, shift) => total + calculateShiftHours(shift), 0)
-  }
+    return shifts.reduce(
+      (total, shift) => total + calculateShiftHours(shift),
+      0
+    );
+  };
 
   const addShift = () => {
-    if (!newShift.startTime || !newShift.endTime) return
+    if (!newShift.startTime || !newShift.endTime) return;
 
     const shift: WorkShift = {
       id: generateShiftId(),
@@ -52,10 +59,10 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
       endTime: newShift.endTime,
       breakMinutes: newShift.breakMinutes || 0,
       description: newShift.description || undefined,
-    }
+    };
 
-    const updatedShifts = [...shifts, shift]
-    onShiftsChange(updatedShifts)
+    const updatedShifts = [...shifts, shift];
+    onShiftsChange(updatedShifts);
 
     // Reset form
     setNewShift({
@@ -63,28 +70,43 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
       endTime: "",
       breakMinutes: 0,
       description: "",
-    })
-  }
+    });
+  };
 
   const removeShift = (shiftId: string) => {
-    const updatedShifts = shifts.filter((shift) => shift.id !== shiftId)
-    onShiftsChange(updatedShifts)
-  }
+    const updatedShifts = shifts.filter((shift) => shift.id !== shiftId);
+    onShiftsChange(updatedShifts);
+  };
 
   const formatTime = (time: string): string => {
-    const [hour, minute] = time.split(":")
-    const hourNum = Number.parseInt(hour)
-    const ampm = hourNum >= 12 ? "PM" : "AM"
-    const displayHour = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
-    return `${displayHour}:${minute} ${ampm}`
-  }
+    const [hour, minute] = time.split(":");
+    const hourNum = Number.parseInt(hour);
+    const ampm = hourNum >= 12 ? "PM" : "AM";
+    const displayHour =
+      hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    return `${displayHour}:${minute} ${ampm}`;
+  };
+
+  const formatHoursToHrsMins = (hours: number): string => {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+
+    if (minutes === 0) {
+      return `${wholeHours}hrs`;
+    } else {
+      return `${wholeHours}hrs ${minutes}mins`;
+    }
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Work Shifts</h3>
         <div className="text-sm text-gray-600">
-          Total: <span className="font-semibold">{getTotalHours().toFixed(2)} hours</span>
+          Total:{" "}
+          <span className="font-semibold">
+            {formatHoursToHrsMins(getTotalHours())}
+          </span>
         </div>
       </div>
 
@@ -92,8 +114,8 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
       {shifts.length > 0 && (
         <div className="space-y-3">
           {shifts.map((shift, index) => (
-            <Card 
-              key={`shift-${index}-${shift.startTime}-${shift.endTime}`} 
+            <Card
+              key={`shift-${index}-${shift.startTime}-${shift.endTime}`}
               className="bg-gray-50"
             >
               <CardContent className="p-4">
@@ -101,14 +123,23 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
                   <div className="flex-1">
                     <div className="flex items-center space-x-4">
                       <div className="text-sm font-medium">
-                        Shift {index + 1}: {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+                        Shift {index + 1}: {formatTime(shift.startTime)} -{" "}
+                        {formatTime(shift.endTime)}
                       </div>
-                      <div className="text-sm text-gray-600">{calculateShiftHours(shift).toFixed(2)} hours</div>
+                      <div className="text-sm text-gray-600">
+                        {calculateShiftHours(shift).toFixed(2)} hours
+                      </div>
                       {shift.breakMinutes && shift.breakMinutes > 0 && (
-                        <div className="text-sm text-gray-500">({shift.breakMinutes}min break)</div>
+                        <div className="text-sm text-gray-500">
+                          ({shift.breakMinutes}min break)
+                        </div>
                       )}
                     </div>
-                    {shift.description && <div className="text-sm text-gray-600 mt-1">{shift.description}</div>}
+                    {shift.description && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        {shift.description}
+                      </div>
+                    )}
                   </div>
                   {!disabled && (
                     <Button
@@ -136,48 +167,71 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Start Time</label>
+                <label className="block text-sm font-medium mb-2">
+                  Start Time
+                </label>
                 <Input
                   type="time"
                   value={newShift.startTime}
-                  onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })}
+                  onChange={(e) =>
+                    setNewShift({ ...newShift, startTime: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">End Time</label>
+                <label className="block text-sm font-medium mb-2">
+                  End Time
+                </label>
                 <Input
                   type="time"
                   value={newShift.endTime}
-                  onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })}
+                  onChange={(e) =>
+                    setNewShift({ ...newShift, endTime: e.target.value })
+                  }
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Break (minutes)</label>
+                <label className="block text-sm font-medium mb-2">
+                  Break (minutes)
+                </label>
                 <Input
                   type="number"
                   min="0"
                   max="480"
                   value={newShift.breakMinutes}
-                  onChange={(e) => setNewShift({ ...newShift, breakMinutes: Number.parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setNewShift({
+                      ...newShift,
+                      breakMinutes: Number.parseInt(e.target.value) || 0,
+                    })
+                  }
                   placeholder="0"
                 />
               </div>
               <div className="flex items-end">
-                <Button onClick={addShift} disabled={!newShift.startTime || !newShift.endTime} className="w-full">
+                <Button
+                  onClick={addShift}
+                  disabled={!newShift.startTime || !newShift.endTime}
+                  className="w-full"
+                >
                   Add Shift
                 </Button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Description (Optional)</label>
+              <label className="block text-sm font-medium mb-2">
+                Description (Optional)
+              </label>
               <Input
                 type="text"
                 value={newShift.description}
-                onChange={(e) => setNewShift({ ...newShift, description: e.target.value })}
+                onChange={(e) =>
+                  setNewShift({ ...newShift, description: e.target.value })
+                }
                 placeholder="e.g., Morning shift, Evening shift, etc."
               />
             </div>
@@ -187,7 +241,12 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
 
       {shifts.length === 0 && disabled && (
         <div className="text-center py-8 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-12 h-12 mx-auto mb-4 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -214,8 +273,8 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
                   endTime: "17:00",
                   breakMinutes: 60,
                   description: "Full day (9-5)",
-                }
-                onShiftsChange([shift])
+                };
+                onShiftsChange([shift]);
               }}
             >
               9 AM - 5 PM
@@ -230,8 +289,8 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
                   endTime: "16:00",
                   breakMinutes: 60,
                   description: "Morning shift",
-                }
-                onShiftsChange([shift])
+                };
+                onShiftsChange([shift]);
               }}
             >
               8 AM - 4 PM
@@ -255,8 +314,8 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
                     breakMinutes: 0,
                     description: "Evening shift",
                   },
-                ]
-                onShiftsChange(shifts)
+                ];
+                onShiftsChange(shifts);
               }}
             >
               Split Shift (9-12, 6-9)
@@ -265,5 +324,5 @@ export function ShiftTracker({ shifts, onShiftsChange, disabled = false }: Shift
         </div>
       )}
     </div>
-  )
+  );
 }

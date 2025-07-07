@@ -1,176 +1,212 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TestModeBanner } from "@/components/test-mode-banner"
-import { ShiftTracker } from "@/components/shift-tracker"
-import { authService } from "@/lib/services/auth"
-import { eodService } from "@/lib/services/eod"
-import type { User, EODReport, WorkShift } from "@/lib/types"
-import { getTodayDate, formatDate } from "@/lib/utils"
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TestModeBanner } from "@/components/test-mode-banner";
+import { ShiftTracker } from "@/components/shift-tracker";
+import { authService } from "@/lib/services/auth";
+import { eodService } from "@/lib/services/eod";
+import type { User, EODReport, WorkShift } from "@/lib/types";
+import { getTodayDate, formatDate } from "@/lib/utils";
 
 export default function EmployeePage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [report, setReport] = useState<EODReport | null>(null)
-  const [previousReports, setPreviousReports] = useState<EODReport[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [report, setReport] = useState<EODReport | null>(null);
+  const [previousReports, setPreviousReports] = useState<EODReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     summary: "",
     shifts: [] as WorkShift[],
-  })
+  });
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const authState = await authService.getAuthState()
+        const authState = await authService.getAuthState();
         if (!authState.isAuthenticated || authState.user?.role !== "employee") {
-          router.push("/auth")
-          return
+          router.push("/auth");
+          return;
         }
 
-        setUser(authState.user)
+        setUser(authState.user);
 
         // Load today's report if it exists
-        const todayReport = await eodService.getReport(authState.user.id, getTodayDate())
+        const todayReport = await eodService.getReport(
+          authState.user.id,
+          getTodayDate()
+        );
         if (todayReport) {
-          setReport(todayReport)
+          setReport(todayReport);
           setFormData({
             summary: todayReport.summary,
             shifts: todayReport.shifts || [],
-          })
+          });
         }
 
         // Load previous reports
         if (authState.user.companyId) {
-          const allReports = await eodService.getReports(authState.user.companyId, authState.user.id)
-          const previousReports = allReports.filter((r) => r.date !== getTodayDate())
-          setPreviousReports(previousReports)
+          const allReports = await eodService.getReports(
+            authState.user.companyId,
+            authState.user.id
+          );
+          const previousReports = allReports.filter(
+            (r) => r.date !== getTodayDate()
+          );
+          setPreviousReports(previousReports);
         }
       } catch (error) {
-        console.error("Failed to load employee data:", error)
+        console.error("Failed to load employee data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadData()
-  }, [router])
+    loadData();
+  }, [router]);
 
   const handleSaveDraft = useCallback(async () => {
-    if (!user?.companyId) return
+    if (!user?.companyId) return;
 
-    setSaving(true)
+    setSaving(true);
     try {
       const savedReport = await eodService.saveDraft(
         user.id,
         user.companyId,
         getTodayDate(),
         formData.summary,
-        formData.shifts,
-      )
-      setReport(savedReport)
+        formData.shifts
+      );
+      setReport(savedReport);
     } catch (error) {
-      console.error("Failed to save draft:", error)
+      console.error("Failed to save draft:", error);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }, [user?.id, user?.companyId, formData.summary, formData.shifts])
+  }, [user?.id, user?.companyId, formData.summary, formData.shifts]);
 
   const handleSubmit = async () => {
-    if (!user?.companyId || formData.shifts.length === 0) return
+    if (!user?.companyId || formData.shifts.length === 0) return;
 
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      await eodService.saveDraft(user.id, user.companyId, getTodayDate(), formData.summary, formData.shifts)
-      const submittedReport = await eodService.submitReport(user.id, getTodayDate())
-      setReport(submittedReport)
+      await eodService.saveDraft(
+        user.id,
+        user.companyId,
+        getTodayDate(),
+        formData.summary,
+        formData.shifts
+      );
+      const submittedReport = await eodService.submitReport(
+        user.id,
+        getTodayDate()
+      );
+      setReport(submittedReport);
     } catch (error) {
-      console.error("Failed to submit report:", error)
+      console.error("Failed to submit report:", error);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleSignOut = async () => {
-    await authService.signOut()
-    router.push("/")
-  }
+    await authService.signOut();
+    router.push("/");
+  };
 
   const handleSwitchTestMode = async (role: "employer" | "employee") => {
     try {
-      await authService.testMode(role)
+      await authService.testMode(role);
       if (role === "employer") {
-        router.push("/dashboard")
+        router.push("/dashboard");
       } else {
-        window.location.reload()
+        window.location.reload();
       }
     } catch (error) {
-      console.error("Failed to switch test mode:", error)
+      console.error("Failed to switch test mode:", error);
     }
-  }
+  };
 
   // Auto-save functionality
   useEffect(() => {
-    if (!user?.companyId || (!formData.summary && formData.shifts.length === 0)) return
+    if (!user?.companyId || (!formData.summary && formData.shifts.length === 0))
+      return;
 
     const timeoutId = setTimeout(() => {
-      handleSaveDraft()
-    }, 2000)
+      handleSaveDraft();
+    }, 2000);
 
-    return () => clearTimeout(timeoutId)
-  }, [formData.summary, formData.shifts, user?.companyId, handleSaveDraft])
+    return () => clearTimeout(timeoutId);
+  }, [formData.summary, formData.shifts, user?.companyId, handleSaveDraft]);
 
   const formatTime = (time: string): string => {
-    const [hour, minute] = time.split(":")
-    const hourNum = Number.parseInt(hour)
-    const ampm = hourNum >= 12 ? "PM" : "AM"
-    const displayHour = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
-    return `${displayHour}:${minute} ${ampm}`
-  }
+    const [hour, minute] = time.split(":");
+    const hourNum = Number.parseInt(hour);
+    const ampm = hourNum >= 12 ? "PM" : "AM";
+    const displayHour =
+      hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    return `${displayHour}:${minute} ${ampm}`;
+  };
 
   const calculateTotalHours = (shifts: WorkShift[]) => {
     return shifts.reduce((total, shift) => {
-      const [startHour, startMin] = shift.startTime.split(":").map(Number)
-      const [endHour, endMin] = shift.endTime.split(":").map(Number)
+      const [startHour, startMin] = shift.startTime.split(":").map(Number);
+      const [endHour, endMin] = shift.endTime.split(":").map(Number);
 
-      const startMinutes = startHour * 60 + startMin
-      let endMinutes = endHour * 60 + endMin
+      const startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
 
       if (endMinutes < startMinutes) {
-        endMinutes += 24 * 60
+        endMinutes += 24 * 60;
       }
 
-      const totalMinutes = endMinutes - startMinutes - (shift.breakMinutes || 0)
-      return total + Math.max(0, totalMinutes / 60)
-    }, 0)
-  }
+      const totalMinutes =
+        endMinutes - startMinutes - (shift.breakMinutes || 0);
+      return total + Math.max(0, totalMinutes / 60);
+    }, 0);
+  };
+
+  const formatHoursToHrsMins = (hours: number): string => {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+
+    if (minutes === 0) {
+      return `${wholeHours}hrs`;
+    } else {
+      return `${wholeHours}hrs ${minutes}mins`;
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-    )
+    );
   }
 
-  const isSubmitted = report?.status === "submitted"
+  const isSubmitted = report?.status === "submitted";
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  })
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Test Mode Banner */}
-      {user?.id === "test-user" && <TestModeBanner userRole="employee" onSwitchMode={handleSwitchTestMode} />}
+      {user?.id === "test-user" && (
+        <TestModeBanner
+          userRole="employee"
+          onSwitchMode={handleSwitchTestMode}
+        />
+      )}
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -180,19 +216,32 @@ export default function EmployeePage() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-semibold text-xl text-gray-900">Looply</span>
+              <span className="font-semibold text-xl text-gray-900">
+                Looply
+              </span>
               <span className="text-gray-400 hidden sm:inline">•</span>
-              <span className="text-sm text-gray-600 hidden sm:inline">{today}</span>
+              <span className="text-sm text-gray-600 hidden sm:inline">
+                {today}
+              </span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">{user?.name?.charAt(0).toUpperCase()}</span>
+                  <span className="text-white text-sm font-medium">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:inline">{user?.name}</span>
+                <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+                  {user?.name}
+                </span>
                 <span className="text-gray-300 hidden sm:inline">|</span>
                 <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -213,7 +262,12 @@ export default function EmployeePage() {
                   className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Sign Out"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -231,7 +285,9 @@ export default function EmployeePage() {
       {/* Main Content - Full Width */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Good morning, {user?.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Good morning, {user?.name}
+          </h1>
         </div>
 
         {/* Mobile-First Layout: Right sidebar first on mobile, then previous reports */}
@@ -244,13 +300,19 @@ export default function EmployeePage() {
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-white font-bold">{user?.name?.charAt(0).toUpperCase()}</span>
+                      <span className="text-white font-bold">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </span>
                     </div>
                     <h3 className="font-medium text-gray-900">{user?.name}</h3>
-                    {user?.position && <p className="text-sm text-gray-600">{user.position}</p>}
+                    {user?.position && (
+                      <p className="text-sm text-gray-600">{user.position}</p>
+                    )}
                     <div className="mt-3 p-2 bg-white rounded border">
                       <p className="text-xs text-gray-500 mb-1">Access Code</p>
-                      <code className="text-sm font-mono font-bold text-blue-600">{user?.accessCode}</code>
+                      <code className="text-sm font-mono font-bold text-blue-600">
+                        {user?.accessCode}
+                      </code>
                     </div>
                   </div>
                 </CardContent>
@@ -260,7 +322,9 @@ export default function EmployeePage() {
               <Card className="border-0 shadow-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Today&apos;s Report</CardTitle>
+                    <CardTitle className="text-lg">
+                      Today&apos;s Report
+                    </CardTitle>
                     {isSubmitted && (
                       <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                         Submitted
@@ -279,24 +343,41 @@ export default function EmployeePage() {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
-                          <span className="text-green-800 text-sm font-medium">Report submitted!</span>
+                          <span className="text-green-800 text-sm font-medium">
+                            Report submitted!
+                          </span>
                         </div>
                       </div>
 
                       <div>
-                        <ShiftTracker shifts={report?.shifts || []} onShiftsChange={() => {}} disabled={true} />
+                        <ShiftTracker
+                          shifts={report?.shifts || []}
+                          onShiftsChange={() => {}}
+                          disabled={true}
+                        />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium mb-2">Summary</label>
-                        <div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">{report?.summary}</div>
+                        <label className="block text-sm font-medium mb-2">
+                          Summary
+                        </label>
+                        <div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">
+                          {report?.summary}
+                        </div>
                       </div>
 
                       <div className="text-xs text-gray-600">
                         Submitted at{" "}
-                        {report?.submittedAt ? new Date(report.submittedAt).toLocaleTimeString() : "Unknown time"}
+                        {report?.submittedAt
+                          ? new Date(report.submittedAt).toLocaleTimeString()
+                          : "Unknown time"}
                       </div>
                     </div>
                   ) : (
@@ -304,18 +385,27 @@ export default function EmployeePage() {
                       <div>
                         <ShiftTracker
                           shifts={formData.shifts}
-                          onShiftsChange={(shifts) => setFormData({ ...formData, shifts })}
+                          onShiftsChange={(shifts) =>
+                            setFormData({ ...formData, shifts })
+                          }
                           disabled={false}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium mb-2">Summary</label>
+                        <label className="block text-sm font-medium mb-2">
+                          Summary
+                        </label>
                         <textarea
                           className="w-full h-32 p-3 border border-gray-200 rounded-lg resize-none text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                           placeholder="What did you accomplish today?"
                           value={formData.summary}
-                          onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              summary: e.target.value,
+                            })
+                          }
                         />
                         <div className="flex justify-between items-center mt-2">
                           <div className="text-xs text-gray-500">
@@ -344,20 +434,33 @@ export default function EmployeePage() {
                               </span>
                             )}
                             {report?.status === "draft" && !saving && (
-                              <span className="text-green-600">Draft saved</span>
+                              <span className="text-green-600">
+                                Draft saved
+                              </span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500">{formData.summary.length} chars</div>
+                          <div className="text-xs text-gray-500">
+                            {formData.summary.length} chars
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <Button variant="outline" onClick={handleSaveDraft} disabled={saving} size="sm">
+                        <Button
+                          variant="outline"
+                          onClick={handleSaveDraft}
+                          disabled={saving}
+                          size="sm"
+                        >
                           {saving ? "Saving..." : "Save Draft"}
                         </Button>
                         <Button
                           onClick={handleSubmit}
-                          disabled={submitting || !formData.summary.trim() || formData.shifts.length === 0}
+                          disabled={
+                            submitting ||
+                            !formData.summary.trim() ||
+                            formData.shifts.length === 0
+                          }
                           size="sm"
                         >
                           {submitting ? "Submitting..." : "Submit Report"}
@@ -366,7 +469,9 @@ export default function EmployeePage() {
 
                       {formData.shifts.length === 0 && (
                         <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <p className="text-yellow-800 text-xs">⚠️ Add at least one work shift to submit.</p>
+                          <p className="text-yellow-800 text-xs">
+                            ⚠️ Add at least one work shift to submit.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -409,14 +514,22 @@ export default function EmployeePage() {
                       >
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
                           <div>
-                            <h3 className="font-medium">{formatDate(prevReport.date)}</h3>
+                            <h3 className="font-medium">
+                              {formatDate(prevReport.date)}
+                            </h3>
                             <p className="text-sm text-gray-600">
-                              {(prevReport.totalHours || calculateTotalHours(prevReport.shifts || [])).toFixed(2)} hours
-                              total
+                              {formatHoursToHrsMins(
+                                prevReport.totalHours ||
+                                  calculateTotalHours(prevReport.shifts || [])
+                              )}
                             </p>
                           </div>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${prevReport.status === "submitted" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              prevReport.status === "submitted"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
                           >
                             {prevReport.status}
                           </span>
@@ -424,25 +537,39 @@ export default function EmployeePage() {
 
                         {prevReport.shifts && prevReport.shifts.length > 0 && (
                           <div className="mb-3">
-                            <div className="text-sm font-medium text-gray-700 mb-2">Work Shifts:</div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">
+                              Work Shifts:
+                            </div>
                             <div className="flex flex-wrap gap-2">
                               {prevReport.shifts.map((shift, index) => (
                                 <div
                                   key={`shift-${index}-${shift.startTime}-${shift.endTime}`}
                                   className="bg-blue-50 px-3 py-1 rounded-full text-sm"
                                 >
-                                  {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
-                                  {shift.breakMinutes && shift.breakMinutes > 0 && (
-                                    <span className="text-gray-600"> ({shift.breakMinutes}min break)</span>
+                                  {formatTime(shift.startTime)} -{" "}
+                                  {formatTime(shift.endTime)}
+                                  {shift.breakMinutes &&
+                                    shift.breakMinutes > 0 && (
+                                      <span className="text-gray-600">
+                                        {" "}
+                                        ({shift.breakMinutes}min break)
+                                      </span>
+                                    )}
+                                  {shift.description && (
+                                    <span className="text-gray-600">
+                                      {" "}
+                                      - {shift.description}
+                                    </span>
                                   )}
-                                  {shift.description && <span className="text-gray-600"> - {shift.description}</span>}
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        <p className="text-gray-700 text-sm line-clamp-3">{prevReport.summary}</p>
+                        <p className="text-gray-700 text-sm line-clamp-3">
+                          {prevReport.summary}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -453,5 +580,5 @@ export default function EmployeePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

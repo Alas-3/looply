@@ -1,31 +1,43 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { authService } from "@/lib/services/auth"
-import { eodService } from "@/lib/services/eod"
-import { companyService } from "@/lib/services/company"
-import type { User, Employee, EODReport, DashboardStats } from "@/lib/types"
-import { formatDate } from "@/lib/utils"
-import { storage } from "@/lib/services/storage"
-import { TestModeBanner } from "@/components/test-mode-banner"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { authService } from "@/lib/services/auth";
+import { eodService } from "@/lib/services/eod";
+import { companyService } from "@/lib/services/company";
+import type { User, Employee, EODReport, DashboardStats } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
+import { storage } from "@/lib/services/storage";
+import { TestModeBanner } from "@/components/test-mode-banner";
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [reports, setReports] = useState<EODReport[]>([])
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedEmployee, setSelectedEmployee] = useState<string>("all")
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [showAllMembers, setShowAllMembers] = useState(false)
-  const [showReports, setShowReports] = useState(false) // For mobile collapsible reports
-  const [newEmployee, setNewEmployee] = useState({ name: "", email: "", position: "" })
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [reports, setReports] = useState<EODReport[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAllMembers, setShowAllMembers] = useState(false);
+  const [showReports, setShowReports] = useState(false); // For mobile collapsible reports
+  const [newEmployee, setNewEmployee] = useState({
+    name: "",
+    email: "",
+    position: "",
+  });
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customDateRange, setCustomDateRange] = useState<{
+    start: string;
+    end: string;
+  }>({
+    start: "",
+    end: "",
+  });
+  const router = useRouter();
 
   interface Shift {
     startTime: string;
@@ -36,166 +48,272 @@ export default function DashboardPage() {
   }
 
   const calculateTotalHours = (shifts: Shift[]) => {
-    if (!shifts || shifts.length === 0) return 0
+    if (!shifts || shifts.length === 0) return 0;
     return shifts.reduce((total, shift) => {
-      const [startHour, startMin] = shift.startTime.split(":").map(Number)
-      const [endHour, endMin] = shift.endTime.split(":").map(Number)
+      const [startHour, startMin] = shift.startTime.split(":").map(Number);
+      const [endHour, endMin] = shift.endTime.split(":").map(Number);
 
-      const startMinutes = startHour * 60 + startMin
-      let endMinutes = endHour * 60 + endMin
+      const startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
 
       if (endMinutes < startMinutes) {
-        endMinutes += 24 * 60
+        endMinutes += 24 * 60;
       }
 
-      const totalMinutes = endMinutes - startMinutes - (shift.breakMinutes || 0)
-      return total + Math.max(0, totalMinutes / 60)
-    }, 0)
-  }
+      const totalMinutes =
+        endMinutes - startMinutes - (shift.breakMinutes || 0);
+      return total + Math.max(0, totalMinutes / 60);
+    }, 0);
+  };
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const authState = await authService.getAuthState()
+        const authState = await authService.getAuthState();
         if (!authState.isAuthenticated) {
-          router.push("/auth")
-          return
+          router.push("/auth");
+          return;
         }
 
-        setUser(authState.user)
-        setUser(authState.user)
+        setUser(authState.user);
+        setUser(authState.user);
 
         if (authState.user?.companyId) {
           const [employeeList, reportList, dashboardStats] = await Promise.all([
             companyService.getEmployees(authState.user.companyId),
             eodService.getReports(authState.user.companyId),
             eodService.getDashboardStats(authState.user.companyId),
-          ])
+          ]);
 
-          setEmployees(employeeList)
-          setReports(reportList)
-          setStats(dashboardStats)
+          setEmployees(employeeList);
+          setReports(reportList);
+          setStats(dashboardStats);
         }
       } catch (error) {
-        console.error("Failed to load dashboard data:", error)
+        console.error("Failed to load dashboard data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadData()
-  }, [router])
+    loadData();
+  }, [router]);
 
   const handleAddEmployee = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user?.companyId || !newEmployee.name.trim()) return
+    e.preventDefault();
+    if (!user?.companyId || !newEmployee.name.trim()) return;
 
     try {
       const employee = await companyService.addEmployee(
         user.companyId,
         newEmployee.name,
         newEmployee.email,
-        newEmployee.position,
-      )
-      setEmployees([...employees, employee])
-      setNewEmployee({ name: "", email: "", position: "" })
-      setShowAddForm(false)
+        newEmployee.position
+      );
+      setEmployees([...employees, employee]);
+      setNewEmployee({ name: "", email: "", position: "" });
+      setShowAddForm(false);
     } catch (error) {
-      console.error("Failed to add employee:", error)
+      console.error("Failed to add employee:", error);
     }
-  }
+  };
 
   const handleRemoveEmployee = async (employeeId: string) => {
     try {
-      await storage.remove(`employee:${employeeId}`)
-      setEmployees(employees.filter((emp) => emp.id !== employeeId))
+      await storage.remove(`employee:${employeeId}`);
+      setEmployees(employees.filter((emp) => emp.id !== employeeId));
 
-      const allReports = await storage.getAll<EODReport>("eod:")
+      const allReports = await storage.getAll<EODReport>("eod:");
       for (const report of allReports) {
         if (report.employeeId === employeeId) {
-          await storage.remove(`eod:${report.id}`)
+          await storage.remove(`eod:${report.id}`);
         }
       }
 
       if (user?.companyId) {
-        const updatedReports = await eodService.getReports(user.companyId)
-        setReports(updatedReports)
+        const updatedReports = await eodService.getReports(user.companyId);
+        setReports(updatedReports);
       }
     } catch (error) {
-      console.error("Failed to remove employee:", error)
+      console.error("Failed to remove employee:", error);
     }
-  }
+  };
 
   const handleSignOut = async () => {
-    await authService.signOut()
-    router.push("/")
-  }
+    await authService.signOut();
+    router.push("/");
+  };
 
   const handleExportCSV = async () => {
-    if (!user?.companyId) return
+    if (!user?.companyId) return;
 
     try {
-      const csvData = await eodService.exportToCSV(user.companyId)
-      const blob = new Blob([csvData], { type: "text/csv" })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `Looply-reports-${new Date().toISOString().split("T")[0]}.csv`
-      a.click()
-      window.URL.revokeObjectURL(url)
+      const csvData = await eodService.exportToCSV(user.companyId);
+      const blob = new Blob([csvData], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Looply-reports-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Failed to export CSV:", error)
+      console.error("Failed to export CSV:", error);
     }
-  }
+  };
 
-  const filteredReports =
-    selectedEmployee === "all" ? reports : reports.filter((report) => report.employeeId === selectedEmployee)
+  const getFilteredReports = () => {
+    let filtered = reports;
+
+    // Apply employee filter
+    if (selectedEmployee !== "all") {
+      filtered = filtered.filter(
+        (report) => report.employeeId === selectedEmployee
+      );
+    }
+
+    // Apply date filter
+    const today = new Date().toISOString().split("T")[0];
+    const todayObj = new Date(today);
+
+    switch (dateFilter) {
+      case "today":
+        filtered = filtered.filter((report) => report.date === today);
+        break;
+      case "last7days": {
+        const sevenDaysAgo = new Date(todayObj);
+        sevenDaysAgo.setDate(todayObj.getDate() - 7);
+        filtered = filtered.filter(
+          (report) =>
+            new Date(report.date) >= sevenDaysAgo &&
+            new Date(report.date) <= todayObj
+        );
+        break;
+      }
+      case "last30days": {
+        const thirtyDaysAgo = new Date(todayObj);
+        thirtyDaysAgo.setDate(todayObj.getDate() - 30);
+        filtered = filtered.filter(
+          (report) =>
+            new Date(report.date) >= thirtyDaysAgo &&
+            new Date(report.date) <= todayObj
+        );
+        break;
+      }
+      case "thisMonth": {
+        const firstDayOfMonth = new Date(
+          todayObj.getFullYear(),
+          todayObj.getMonth(),
+          1
+        );
+        filtered = filtered.filter(
+          (report) =>
+            new Date(report.date) >= firstDayOfMonth &&
+            new Date(report.date) <= todayObj
+        );
+        break;
+      }
+      case "lastMonth": {
+        const firstDayLastMonth = new Date(
+          todayObj.getFullYear(),
+          todayObj.getMonth() - 1,
+          1
+        );
+        const lastDayLastMonth = new Date(
+          todayObj.getFullYear(),
+          todayObj.getMonth(),
+          0
+        );
+        filtered = filtered.filter(
+          (report) =>
+            new Date(report.date) >= firstDayLastMonth &&
+            new Date(report.date) <= lastDayLastMonth
+        );
+        break;
+      }
+      case "custom": {
+        if (customDateRange.start && customDateRange.end) {
+          const startDate = new Date(customDateRange.start);
+          const endDate = new Date(customDateRange.end);
+          filtered = filtered.filter(
+            (report) =>
+              new Date(report.date) >= startDate &&
+              new Date(report.date) <= endDate
+          );
+        }
+        break;
+      }
+    }
+
+    return filtered;
+  };
+
+  // Use this function instead of the previous filteredReports variable
+  const filteredReports = getFilteredReports();
 
   const handleSwitchTestMode = async (role: "employer" | "employee") => {
     try {
-      await authService.testMode(role)
+      await authService.testMode(role);
       if (role === "employee") {
-        router.push("/employee")
+        router.push("/employee");
       } else {
-        window.location.reload()
+        window.location.reload();
       }
     } catch (error) {
-      console.error("Failed to switch test mode:", error)
+      console.error("Failed to switch test mode:", error);
     }
-  }
+  };
 
   const formatTime = (time: string): string => {
-    const [hour, minute] = time.split(":")
-    const hourNum = Number.parseInt(hour)
-    const ampm = hourNum >= 12 ? "PM" : "AM"
-    const displayHour = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
-    return `${displayHour}:${minute} ${ampm}`
-  }
+    const [hour, minute] = time.split(":");
+    const hourNum = Number.parseInt(hour);
+    const ampm = hourNum >= 12 ? "PM" : "AM";
+    const displayHour =
+      hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    return `${displayHour}:${minute} ${ampm}`;
+  };
 
   const copyAccessCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-  }
+    navigator.clipboard.writeText(code);
+  };
+
+  const formatHoursToHrsMins = (hours: number): string => {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+
+    if (minutes === 0) {
+      return `${wholeHours}hrs`;
+    } else {
+      return `${wholeHours}hrs ${minutes}mins`;
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-    )
+    );
   }
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
-  })
+  });
 
-  const displayedMembers = showAllMembers ? employees : employees.slice(0, 5)
+  const displayedMembers = showAllMembers ? employees : employees.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Test Mode Banner */}
-      {user?.id === "test-user" && <TestModeBanner userRole="employer" onSwitchMode={handleSwitchTestMode} />}
+      {user?.id === "test-user" && (
+        <TestModeBanner
+          userRole="employer"
+          onSwitchMode={handleSwitchTestMode}
+        />
+      )}
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -205,19 +323,32 @@ export default function DashboardPage() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-semibold text-xl text-gray-900">Looply</span>
+              <span className="font-semibold text-xl text-gray-900">
+                Looply
+              </span>
               <span className="text-gray-400 hidden sm:inline">•</span>
-              <span className="text-sm text-gray-600 hidden sm:inline">{currentDate}</span>
+              <span className="text-sm text-gray-600 hidden sm:inline">
+                {currentDate}
+              </span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">{user?.name?.charAt(0).toUpperCase()}</span>
+                  <span className="text-white text-sm font-medium">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:inline">{user?.name}</span>
+                <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+                  {user?.name}
+                </span>
                 <span className="text-gray-300 hidden sm:inline">|</span>
                 <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -238,7 +369,12 @@ export default function DashboardPage() {
                   className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Sign Out"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -256,7 +392,9 @@ export default function DashboardPage() {
       {/* Main Content - Full Width */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Good morning, {user?.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Good morning, {user?.name}
+          </h1>
         </div>
 
         {/* Stats Cards */}
@@ -281,8 +419,12 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="ml-3 lg:ml-4">
-                    <p className="text-xs lg:text-sm font-medium text-gray-600">Reports</p>
-                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.totalSubmissions}</p>
+                    <p className="text-xs lg:text-sm font-medium text-gray-600">
+                      Reports
+                    </p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">
+                      {stats.totalSubmissions}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -307,8 +449,12 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="ml-3 lg:ml-4">
-                    <p className="text-xs lg:text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.pendingEODs}</p>
+                    <p className="text-xs lg:text-sm font-medium text-gray-600">
+                      Pending
+                    </p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">
+                      {stats.pendingEODs}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -333,8 +479,12 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="ml-3 lg:ml-4">
-                    <p className="text-xs lg:text-sm font-medium text-gray-600">Team</p>
-                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.activeEmployees}</p>
+                    <p className="text-xs lg:text-sm font-medium text-gray-600">
+                      Team
+                    </p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">
+                      {stats.activeEmployees}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -359,8 +509,12 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="ml-3 lg:ml-4">
-                    <p className="text-xs lg:text-sm font-medium text-gray-600">Avg Hours</p>
-                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.averageHours.toFixed(1)}</p>
+                    <p className="text-xs lg:text-sm font-medium text-gray-600">
+                      Avg Hours
+                    </p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">
+                      {formatHoursToHrsMins(stats.averageHours)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -383,12 +537,19 @@ export default function DashboardPage() {
                       className="xl:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       <svg
-                        className={`w-5 h-5 transform transition-transform ${showReports ? "rotate-180" : ""}`}
+                        className={`w-5 h-5 transform transition-transform ${
+                          showReports ? "rotate-180" : ""
+                        }`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -405,13 +566,63 @@ export default function DashboardPage() {
                         </option>
                       ))}
                     </select>
-                    <Button variant="outline" onClick={handleExportCSV} size="sm">
+
+                    {/* Add the date filter dropdown here, right between employee dropdown and Export button */}
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                    >
+                      <option value="all">All Dates</option>
+                      <option value="today">Today</option>
+                      <option value="last7days">Last 7 Days</option>
+                      <option value="last30days">Last 30 Days</option>
+                      <option value="thisMonth">This Month</option>
+                      <option value="lastMonth">Last Month</option>
+                      <option value="custom">Custom Range</option>
+                    </select>
+
+                    {/* Show date inputs when custom is selected */}
+                    {dateFilter === "custom" && (
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={customDateRange.start}
+                          onChange={(e) =>
+                            setCustomDateRange({
+                              ...customDateRange,
+                              start: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        />
+                        <input
+                          type="date"
+                          value={customDateRange.end}
+                          onChange={(e) =>
+                            setCustomDateRange({
+                              ...customDateRange,
+                              end: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        />
+                      </div>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      onClick={handleExportCSV}
+                      size="sm"
+                    >
                       Export CSV
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className={`${!showReports ? "hidden xl:block" : ""}`}>
+              <CardContent
+                className={`${!showReports ? "hidden xl:block" : ""}`}
+              >
                 {filteredReports.length === 0 ? (
                   <div className="text-center py-8">
                     <svg
@@ -432,8 +643,12 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-4">
                     {filteredReports.slice(0, 10).map((report) => {
-                      const employee = employees.find((emp) => emp.id === report.employeeId)
-                      const totalHours = report.totalHours || calculateTotalHours(report.shifts || [])
+                      const employee = employees.find(
+                        (emp) => emp.id === report.employeeId
+                      );
+                      const totalHours =
+                        report.totalHours ||
+                        calculateTotalHours(report.shifts || []);
                       return (
                         <div
                           key={report.id}
@@ -441,13 +656,20 @@ export default function DashboardPage() {
                         >
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
                             <div>
-                              <h3 className="font-medium">{employee?.name || "Unknown Employee"}</h3>
+                              <h3 className="font-medium">
+                                {employee?.name || "Unknown Employee"}
+                              </h3>
                               <p className="text-sm text-gray-600">
-                                {formatDate(report.date)} • {totalHours.toFixed(2)} hours total
+                                {formatDate(report.date)} •{" "}
+                                {formatHoursToHrsMins(totalHours)}
                               </p>
                             </div>
                             <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${report.status === "submitted" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                report.status === "submitted"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
                             >
                               {report.status}
                             </span>
@@ -455,28 +677,42 @@ export default function DashboardPage() {
 
                           {report.shifts && report.shifts.length > 0 && (
                             <div className="mb-3">
-                              <div className="text-sm font-medium text-gray-700 mb-2">Work Shifts:</div>
+                              <div className="text-sm font-medium text-gray-700 mb-2">
+                                Work Shifts:
+                              </div>
                               <div className="flex flex-wrap gap-2">
                                 {report.shifts.map((shift, index) => (
-                                  <div 
+                                  <div
                                     // Use this composite key instead of just shift.id
-                                    key={`${report.id}-shift-${index}`} 
+                                    key={`${report.id}-shift-${index}`}
                                     className="bg-blue-50 px-3 py-1 rounded-full text-sm"
                                   >
-                                    {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
-                                    {shift.breakMinutes && shift.breakMinutes > 0 && (
-                                      <span className="text-gray-600"> ({shift.breakMinutes}min break)</span>
+                                    {formatTime(shift.startTime)} -{" "}
+                                    {formatTime(shift.endTime)}
+                                    {shift.breakMinutes &&
+                                      shift.breakMinutes > 0 && (
+                                        <span className="text-gray-600">
+                                          {" "}
+                                          ({shift.breakMinutes}min break)
+                                        </span>
+                                      )}
+                                    {shift.description && (
+                                      <span className="text-gray-600">
+                                        {" "}
+                                        - {shift.description}
+                                      </span>
                                     )}
-                                    {shift.description && <span className="text-gray-600"> - {shift.description}</span>}
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
 
-                          <p className="text-gray-700 text-sm line-clamp-2">{report.summary}</p>
+                          <p className="text-gray-700 text-sm line-clamp-2">
+                            {report.summary}
+                          </p>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -493,8 +729,17 @@ export default function DashboardPage() {
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleExportCSV}>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-transparent"
+                    onClick={handleExportCSV}
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -509,7 +754,12 @@ export default function DashboardPage() {
                     className="w-full justify-start bg-transparent"
                     onClick={() => setShowAddForm(!showAddForm)}
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -531,41 +781,71 @@ export default function DashboardPage() {
                   <CardContent>
                     <form onSubmit={handleAddEmployee} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">Name *</label>
+                        <label className="block text-sm font-medium mb-2">
+                          Name *
+                        </label>
                         <input
                           type="text"
                           value={newEmployee.name}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                          onChange={(e) =>
+                            setNewEmployee({
+                              ...newEmployee,
+                              name: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                           placeholder="John Doe"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">Email</label>
+                        <label className="block text-sm font-medium mb-2">
+                          Email
+                        </label>
                         <input
                           type="email"
                           value={newEmployee.email}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                          onChange={(e) =>
+                            setNewEmployee({
+                              ...newEmployee,
+                              email: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                           placeholder="john@company.com"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">Position</label>
+                        <label className="block text-sm font-medium mb-2">
+                          Position
+                        </label>
                         <input
                           type="text"
                           value={newEmployee.position}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                          onChange={(e) =>
+                            setNewEmployee({
+                              ...newEmployee,
+                              position: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                           placeholder="Developer"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit" size="sm" disabled={!newEmployee.name.trim()}>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={!newEmployee.name.trim()}
+                        >
                           Add
                         </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAddForm(false)}
+                        >
                           Cancel
                         </Button>
                       </div>
@@ -577,31 +857,51 @@ export default function DashboardPage() {
               {/* Team Members */}
               <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg">Team Members ({employees.length})</CardTitle>
+                  <CardTitle className="text-lg">
+                    Team Members ({employees.length})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {employees.length === 0 ? (
                     <div className="text-center py-4">
-                      <p className="text-gray-600 text-sm">No team members yet</p>
+                      <p className="text-gray-600 text-sm">
+                        No team members yet
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {displayedMembers.map((employee) => (
-                        <div key={employee.id} className="bg-gray-50 rounded-lg p-3">
+                        <div
+                          key={employee.id}
+                          className="bg-gray-50 rounded-lg p-3"
+                        >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm text-gray-900 truncate">{employee.name}</h4>
+                              <h4 className="font-medium text-sm text-gray-900 truncate">
+                                {employee.name}
+                              </h4>
                               {employee.position && (
-                                <p className="text-xs text-gray-600 truncate">{employee.position}</p>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {employee.position}
+                                </p>
                               )}
-                              {employee.email && <p className="text-xs text-gray-500 truncate">{employee.email}</p>}
+                              {employee.email && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {employee.email}
+                                </p>
+                              )}
                             </div>
                             <button
                               onClick={() => handleRemoveEmployee(employee.id)}
                               className="text-red-500 hover:text-red-700 p-1"
                               title="Remove employee"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -612,13 +912,17 @@ export default function DashboardPage() {
                             </button>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Access Code:</span>
+                            <span className="text-xs text-gray-500">
+                              Access Code:
+                            </span>
                             <div className="flex items-center space-x-1">
                               <code className="text-xs bg-white px-2 py-1 rounded border font-mono">
                                 {employee.accessCode}
                               </code>
                               <button
-                                onClick={() => copyAccessCode(employee.accessCode)}
+                                onClick={() =>
+                                  copyAccessCode(employee.accessCode)
+                                }
                                 className="p-1 hover:bg-gray-200 rounded"
                                 title="Copy code"
                               >
@@ -648,15 +952,35 @@ export default function DashboardPage() {
                         >
                           {showAllMembers ? (
                             <>
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              <svg
+                                className="w-4 h-4 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 15l7-7 7 7"
+                                />
                               </svg>
                               Show Less
                             </>
                           ) : (
                             <>
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              <svg
+                                className="w-4 h-4 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 9l-7 7-7-7"
+                                />
                               </svg>
                               Show {employees.length - 5} More
                             </>
@@ -672,5 +996,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
